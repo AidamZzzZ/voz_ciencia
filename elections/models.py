@@ -21,10 +21,13 @@ class Plancha(models.Model):
         return f"{self.nombre} ({self.candidato_principal})"
 
 class Votante(models.Model):
-    token_sesion = models.CharField(max_length=255, unique=True)
+    token_sesion = models.CharField(max_length=255)
     campana = models.ForeignKey(Campana, on_delete=models.CASCADE, related_name='votantes')
     ya_voto = models.BooleanField(default=False)
     fecha_voto = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('token_sesion', 'campana')
 
     def __str__(self):
         return self.token_sesion

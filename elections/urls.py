@@ -1,6 +1,6 @@
 from django.urls import path
 from django.contrib.auth.views import LogoutView
-from .views import AdminLoginView, AdminDashboardView, CampanaCreateView, CampanaUpdateView, CampanaDeleteView, CampanaResultadosView, CampanaVotacionView, CampanaQRView
+from .views import AdminLoginView, AdminDashboardView, CampanaCreateView, CampanaUpdateView, CampanaDeleteView, CampanaResultadosView, CampanaVotacionView, CampanaQRView, EmitirVotoView
 
 urlpatterns = [
     path('admin-login/', AdminLoginView.as_view(), name='admin_login'),
@@ -12,6 +12,7 @@ urlpatterns = [
     path('admin-dashboard/campana/<int:pk>/resultados/', CampanaResultadosView.as_view(), name='campana_resultados'),
     path('admin-dashboard/campana/<int:pk>/qr/', CampanaQRView.as_view(), name='campana_qr'),
     path('campana/<int:pk>/votar/', CampanaVotacionView.as_view(), name='campana_votar'),
+    path('campana/<int:pk>/emitir-voto/', EmitirVotoView.as_view(), name='emitir_voto'),
 ]
 
 

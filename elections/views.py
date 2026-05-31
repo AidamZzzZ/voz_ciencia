@@ -7,7 +7,11 @@ import qrcode
 import base64
 from io import BytesIO
 from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView, DetailView
-from .models import Campana
+from django.views import View
+from django.db import transaction
+from django.utils import timezone
+import uuid
+from .models import Campana, Plancha, Votante, AuditoriaVoto
 from .forms import CampanaForm, PlanchaFormSet
 
 class AdminLoginView(LoginView):
@@ -110,6 +114,62 @@ class CampanaVotacionView(DetailView):
     model = Campana
     template_name = 'elections/campana_votacion.html'
     context_object_name = 'campana'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if not self.request.session.session_key:
+            self.request.session.create()
+            
+        session_key = self.request.session.session_key
+        ya_voto = Votante.objects.filter(campana=self.object, token_sesion=session_key, ya_voto=True).exists()
+        
+        comprobante = self.request.session.get(f'comprobante_{self.object.id}')
+        
+        context['ya_voto'] = ya_voto
+        context['comprobante'] = comprobante
+        return context
+
+class EmitirVotoView(View):
+    def post(self, request, pk):
+        if not request.session.session_key:
+            request.session.create()
+            
+        session_key = request.session.session_key
+        plancha_id = request.POST.get('plancha_id')
+        
+        if not plancha_id:
+            return redirect('campana_votar', pk=pk)
+            
+        with transaction.atomic():
+            campana = Campana.objects.get(id=pk)
+            if not campana.esta_activa:
+                return redirect('campana_votar', pk=pk)
+                
+            votante, created = Votante.objects.select_for_update().get_or_create(
+                token_sesion=session_key, 
+                campana=campana
+            )
+            
+            if not votante.ya_voto:
+                try:
+                    plancha = Plancha.objects.select_for_update().get(id=plancha_id, campana=campana)
+                    plancha.votos_recibidos += 1
+                    plancha.save()
+                    
+                    votante.ya_voto = True
+                    votante.fecha_voto = timezone.now()
+                    votante.save()
+                    
+                    comprobante_hash = str(uuid.uuid4())
+                    AuditoriaVoto.objects.create(
+                        comprobante=comprobante_hash,
+                        campana=campana
+                    )
+                    request.session[f'comprobante_{campana.id}'] = comprobante_hash
+                except Plancha.DoesNotExist:
+                    pass
+                    
+        return redirect('campana_votar', pk=pk)
 
 class CampanaQRView(LoginRequiredMixin, DetailView):
     model = Campana
