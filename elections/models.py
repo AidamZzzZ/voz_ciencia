@@ -39,3 +39,22 @@ class AuditoriaVoto(models.Model):
 
     def __str__(self):
         return self.comprobante
+
+class SystemLog(models.Model):
+    ACCION_CHOICES = [
+        ('LOGIN', 'Inicio de sesión Admin'),
+        ('LOGOUT', 'Cierre de sesión Admin'),
+        ('CAMPANA_CREADA', 'Campaña Creada'),
+        ('CAMPANA_EDITADA', 'Campaña Editada'),
+        ('VOTO_EMITIDO', 'Voto Emitido'),
+    ]
+    accion = models.CharField(max_length=50, choices=ACCION_CHOICES)
+    descripcion = models.TextField()
+    fecha = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"{self.fecha.strftime('%Y-%m-%d %H:%M:%S')} - {self.accion}"

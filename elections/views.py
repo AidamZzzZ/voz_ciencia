@@ -6,17 +6,44 @@ import json
 import qrcode
 import base64
 from io import BytesIO
-from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView, DetailView
+from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView, DetailView, ListView
 from django.views import View
 from django.db import transaction
 from django.utils import timezone
+from django.contrib.auth.signals import user_logged_in, user_logged_out
+from django.dispatch import receiver
 import uuid
-from .models import Campana, Plancha, Votante, AuditoriaVoto
+from .models import Campana, Plancha, Votante, AuditoriaVoto, SystemLog
 from .forms import CampanaForm, PlanchaFormSet
 
 class AdminLoginView(LoginView):
     template_name = 'elections/admin_login.html'
     redirect_authenticated_user = True
+
+@receiver(user_logged_in)
+def log_user_login(sender, request, user, **kwargs):
+    ip_address = request.META.get('REMOTE_ADDR')
+    SystemLog.objects.create(
+        accion='LOGIN',
+        descripcion=f'El administrador {user.username} ha iniciado sesión.',
+        ip_address=ip_address
+    )
+
+@receiver(user_logged_out)
+def log_user_logout(sender, request, user, **kwargs):
+    ip_address = request.META.get('REMOTE_ADDR')
+    username = user.username if user else 'Desconocido'
+    SystemLog.objects.create(
+        accion='LOGOUT',
+        descripcion=f'El administrador {username} ha cerrado sesión.',
+        ip_address=ip_address
+    )
+
+class SystemLogsView(LoginRequiredMixin, ListView):
+    model = SystemLog
+    template_name = 'elections/system_logs.html'
+    context_object_name = 'logs'
+    paginate_by = 50
 
 class AdminDashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'elections/admin_dashboard.html'
@@ -47,6 +74,14 @@ class CampanaCreateView(LoginRequiredMixin, CreateView):
             self.object = form.save()
             planchas.instance = self.object
             planchas.save()
+            
+            ip_address = self.request.META.get('REMOTE_ADDR')
+            SystemLog.objects.create(
+                accion='CAMPANA_CREADA',
+                descripcion=f'Se creó la campaña "{self.object.nombre_campana}".',
+                ip_address=ip_address
+            )
+            
             return super().form_valid(form)
         else:
             return self.render_to_response(self.get_context_data(form=form))
@@ -72,6 +107,14 @@ class CampanaUpdateView(LoginRequiredMixin, UpdateView):
             self.object = form.save()
             planchas.instance = self.object
             planchas.save()
+            
+            ip_address = self.request.META.get('REMOTE_ADDR')
+            SystemLog.objects.create(
+                accion='CAMPANA_EDITADA',
+                descripcion=f'Se editó la campaña "{self.object.nombre_campana}".',
+                ip_address=ip_address
+            )
+            
             return super().form_valid(form)
         else:
             return self.render_to_response(self.get_context_data(form=form))
@@ -167,6 +210,13 @@ class EmitirVotoView(View):
                         campana=campana
                     )
                     request.session[f'comprobante_{campana.id}'] = comprobante_hash
+                    
+                    ip_address = request.META.get('REMOTE_ADDR')
+                    SystemLog.objects.create(
+                        accion='VOTO_EMITIDO',
+                        descripcion=f'Voto anónimo emitido en campaña "{campana.nombre_campana}". Hash: {comprobante_hash[:8]}...',
+                        ip_address=ip_address
+                    )
                 except Plancha.DoesNotExist:
                     pass
                     
