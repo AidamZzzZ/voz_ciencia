@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Código QR - {{ campana.nombre_campana }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'campana_resultados' campana.id %}" style="color: var(--primary); text-decoration: none; font-weight: 500;">
+        &larr; Volver a Resultados
+    </a>
+</div>
+
+<div class="glass-panel" style="padding: 2.5rem; text-align: center; max-width: 400px; margin: 0 auto;">
+    <h2 style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;">
+        Código QR de Votación
+    </h2>
+    <p class="text-muted" style="margin-bottom: 2rem; font-size: 0.875rem;">
+        {{ campana.nombre_campana }}
+    </p>
+
+    <div style="background: white; padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border); display: inline-block; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+        <!-- Mostrar la imagen generada en Base64 -->
+        <img src="data:image/png;base64,{{ qr_code_base64 }}" alt="Código QR de la campaña" style="width: 100%; max-width: 250px; height: auto;">
+    </div>
+
+    <div>
+        <p style="font-size: 0.875rem; color: var(--text-main); margin-bottom: 1.5rem;">
+            Imprime este código QR y colócalo en un lugar visible para que los usuarios puedan escanearlo y acceder a la interfaz de votación.
+        </p>
+
+        <!-- Botón de Descarga -->
+        <a href="data:image/png;base64,{{ qr_code_base64 }}" download="QR_Votacion_{{ campana.id }}.png" class="btn-primary" style="text-decoration: none; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Descargar Código QR
+        </a>
+    </div>
+</div>
+{% endblock %}

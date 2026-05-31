@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Votación - {{ campana.nombre_campana }}{% endblock %}
+
+{% block content %}
+<div class="glass-panel" style="padding: 2.5rem; max-width: 500px; margin: 0 auto; text-align: center;">
+    
+    <div style="margin-bottom: 2rem;">
+        <h2 style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;">
+            Elecciones Estudiantiles
+        </h2>
+        <h3 style="font-size: 1.25rem; color: var(--text-main); font-weight: 600;">
+            {{ campana.nombre_campana }}
+        </h3>
+    </div>
+
+    {% if not campana.esta_activa %}
+        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--error); padding: 1.5rem; border-radius: 1rem; color: var(--error); margin-bottom: 2rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <p style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem;">Votación Cerrada</p>
+            <p style="font-size: 0.875rem;">Esta campaña electoral ya ha finalizado. Gracias por su participación.</p>
+        </div>
+    {% else %}
+        <div style="margin-bottom: 2rem; text-align: left;">
+            <p class="text-muted" style="margin-bottom: 1.5rem; text-align: center;">
+                Seleccione una de las siguientes planchas para emitir su voto:
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                {% for plancha in campana.planchas.all %}
+                <div style="border: 2px solid var(--border); border-radius: 1rem; padding: 1rem; cursor: pointer; transition: var(--transition);" onmouseover="this.style.borderColor='var(--primary)';" onmouseout="this.style.borderColor='var(--border)';">
+                    <h4 style="color: var(--primary); font-size: 1.1rem; margin-bottom: 0.25rem;">{{ plancha.nombre }}</h4>
+                    <p style="color: var(--text-main); font-size: 0.875rem; font-weight: 500;">Candidato: {{ plancha.candidato_principal }}</p>
+                </div>
+                {% empty %}
+                <p style="text-align: center; color: var(--text-muted);">No hay planchas registradas en esta campaña.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button class="btn-primary" style="opacity: 0.5; cursor: not-allowed;" disabled>
+            Emitir Voto (Próximamente)
+        </button>
+        <p style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
+            * Esta es una vista previa de la interfaz de votación. La funcionalidad de votación será implementada en la siguiente fase.
+        </p>
+    {% endif %}
+
+</div>
+{% endblock %}

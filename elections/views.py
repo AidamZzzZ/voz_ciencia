@@ -1,8 +1,11 @@
 from django.shortcuts import render, redirect
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import LoginRequiredMixin
 import json
+import qrcode
+import base64
+from io import BytesIO
 from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView, DetailView
 from .models import Campana
 from .forms import CampanaForm, PlanchaFormSet
@@ -103,5 +106,36 @@ class CampanaResultadosView(LoginRequiredMixin, DetailView):
         
         return context
 
+class CampanaVotacionView(DetailView):
+    model = Campana
+    template_name = 'elections/campana_votacion.html'
+    context_object_name = 'campana'
 
+class CampanaQRView(LoginRequiredMixin, DetailView):
+    model = Campana
+    template_name = 'elections/campana_qr.html'
+    context_object_name = 'campana'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        campana = self.object
+        
+        url_votacion = self.request.build_absolute_uri(reverse('campana_votar', kwargs={'pk': campana.id}))
+        
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(url_votacion)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        qr_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        
+        context['qr_code_base64'] = qr_base64
+        return context
