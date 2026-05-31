@@ -95,18 +95,19 @@ class CampanaResultadosView(LoginRequiredMixin, DetailView):
         votos_planchas = [p.votos_recibidos for p in planchas]
         
         total_votos = sum(votos_planchas)
-        total_visitas = campana.votantes.count()
+        total_censo = 1800
         
-        porcentaje_participacion = 0
-        if total_visitas > 0:
-            porcentaje_participacion = round((total_votos / total_visitas) * 100, 1)
+        porcentaje_participacion = round((total_votos / total_censo) * 100, 1)
             
         context['total_votos'] = total_votos
-        context['total_visitas'] = total_visitas
+        context['total_visitas'] = total_censo
         context['porcentaje_participacion'] = porcentaje_participacion
         
         context['chart_labels'] = json.dumps(nombres_planchas)
         context['chart_data'] = json.dumps(votos_planchas)
+        
+        auditorias = AuditoriaVoto.objects.filter(campana=campana).order_by('-fecha_emision')[:15]
+        context['auditorias'] = auditorias
         
         return context
 

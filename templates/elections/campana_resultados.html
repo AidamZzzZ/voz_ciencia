@@ -96,7 +96,7 @@
     
     <div class="stat-card">
         <div class="stat-value">{{ total_visitas }}</div>
-        <div class="stat-label">Visitas Registradas</div>
+        <div class="stat-label">Censo Electoral</div>
     </div>
     
     <div class="stat-card">
@@ -105,17 +105,78 @@
     </div>
 </div>
 
-<div class="chart-container">
-    <h3 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 1.5rem; text-align: center;">
-        Votos por Candidato
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="chart-container" style="margin-bottom: 0;">
+        <h3 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 1.5rem; text-align: center;">
+            Votos por Candidato
+        </h3>
+        {% if total_votos > 0 %}
+            <canvas id="resultadosChart"></canvas>
+        {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                Aún no hay votos registrados para esta campaña.
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="chart-container" style="margin-bottom: 0;">
+        <h3 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 1.5rem; text-align: center;">
+            Participación Total
+        </h3>
+        {% if total_votos > 0 %}
+            <div style="position: relative; max-width: 250px; margin: 0 auto;">
+                <canvas id="participacionChart"></canvas>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                    <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">{{ porcentaje_participacion }}%</span>
+                </div>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                Aún no hay votos registrados para esta campaña.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
+    <h3 style="font-size: 1.25rem; color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        Auditoría y Seguridad
     </h3>
-    {% if total_votos > 0 %}
-        <canvas id="resultadosChart"></canvas>
-    {% else %}
-        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
-            Aún no hay votos registrados para esta campaña.
-        </div>
-    {% endif %}
+    <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">Últimas transacciones registradas de forma segura y anónima.</p>
+    
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border); color: var(--text-muted);">
+                    <th style="padding: 0.75rem 1rem; font-weight: 600;">Comprobante (Hash)</th>
+                    <th style="padding: 0.75rem 1rem; font-weight: 600;">Fecha y Hora</th>
+                    <th style="padding: 0.75rem 1rem; font-weight: 600;">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for auditoria in auditorias %}
+                <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 1rem; font-family: monospace; color: var(--text-main);">
+                        <span style="background: rgba(0,0,0,0.05); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">{{ auditoria.comprobante|truncatechars:20 }}...</span>
+                    </td>
+                    <td style="padding: 1rem; color: var(--text-muted);">{{ auditoria.fecha_emision|date:"d M Y, H:i:s" }}</td>
+                    <td style="padding: 1rem;">
+                        <span style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600;">
+                            Voto Emitido
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="padding: 2rem; text-align: center; color: var(--text-muted);">No hay registros de auditoría disponibles.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 {% endblock %}
@@ -186,6 +247,46 @@
                             beginAtZero: true,
                             ticks: {
                                 precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Participación Doughnut Chart
+            const ctxPart = document.getElementById('participacionChart').getContext('2d');
+            const censoTotal = {{ total_visitas }};
+            const votosFaltantes = Math.max(0, censoTotal - totalVotos);
+            
+            new Chart(ctxPart, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Votos Emitidos', 'Restante'],
+                    datasets: [{
+                        data: [totalVotos, votosFaltantes],
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.8)', // Verde para emitidos
+                            'rgba(0, 0, 0, 0.05)'      // Gris claro para faltantes
+                        ],
+                        borderColor: [
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(0, 0, 0, 0.1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '75%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.raw;
+                                }
                             }
                         }
                     }
