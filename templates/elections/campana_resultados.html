@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}Resultados de Campaña - Voz Ciencia{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 4px 6px -1px rgba(0,86,179,0.05);
+        transition: var(--transition);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0,86,179,0.1);
+        border-color: var(--primary);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+        line-height: 1.2;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .chart-container {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 4px 6px -1px rgba(0,86,179,0.05);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'admin_dashboard' %}" style="color: var(--primary); text-decoration: none; font-weight: 500;">
+        &larr; Volver al Panel
+    </a>
+</div>
+
+<div class="mb-6">
+    <h2 style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;">
+        Resultados: {{ campana.nombre_campana }}
+    </h2>
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        {% if campana.esta_activa %}
+            <span style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600;">Activa</span>
+        {% else %}
+            <span style="background: rgba(239, 68, 68, 0.1); color: #EF4444; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600;">Cerrada</span>
+        {% endif %}
+        <span class="text-muted" style="font-size: 0.875rem;">
+            Cierra el: {{ campana.fecha_cierre|date:"d M Y, H:i" }}
+        </span>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_votos }}</div>
+        <div class="stat-label">Votos Totales</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-value">{{ total_visitas }}</div>
+        <div class="stat-label">Visitas Registradas</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-value">{{ porcentaje_participacion }}%</div>
+        <div class="stat-label">Participación</div>
+    </div>
+</div>
+
+<div class="chart-container">
+    <h3 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 1.5rem; text-align: center;">
+        Votos por Candidato
+    </h3>
+    {% if total_votos > 0 %}
+        <canvas id="resultadosChart"></canvas>
+    {% else %}
+        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+            Aún no hay votos registrados para esta campaña.
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const labels = JSON.parse('{{ chart_labels|escapejs }}');
+        const data = JSON.parse('{{ chart_data|escapejs }}');
+        const totalVotos = {{ total_votos }};
+
+        if (totalVotos > 0) {
+            const ctx = document.getElementById('resultadosChart').getContext('2d');
+            
+            // Colores vibrantes para cada barra
+            const backgroundColors = [
+                'rgba(0, 86, 179, 0.7)',
+                'rgba(0, 150, 199, 0.7)',
+                'rgba(16, 185, 129, 0.7)',
+                'rgba(245, 158, 11, 0.7)',
+                'rgba(139, 92, 246, 0.7)'
+            ];
+            
+            const borderColors = [
+                'rgba(0, 86, 179, 1)',
+                'rgba(0, 150, 199, 1)',
+                'rgba(16, 185, 129, 1)',
+                'rgba(245, 158, 11, 1)',
+                'rgba(139, 92, 246, 1)'
+            ];
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Votos',
+                        data: data,
+                        backgroundColor: backgroundColors.slice(0, labels.length),
+                        borderColor: borderColors.slice(0, labels.length),
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

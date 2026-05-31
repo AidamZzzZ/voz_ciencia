@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Crear Campaña - Voz Ciencia{% endblock %}
+
+{% block extra_head %}
+<style>
+    .plancha-form {
+        background: white;
+        border: 1px solid var(--border);
+        padding: 1.5rem;
+        border-radius: 1rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+    .remove-plancha {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        color: var(--error);
+        cursor: pointer;
+        background: rgba(220, 38, 38, 0.1);
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'admin_dashboard' %}" style="color: var(--primary); text-decoration: none; font-weight: 500;">
+        &larr; Volver al Panel
+    </a>
+</div>
+
+<h2 style="font-size: 1.5rem; color: var(--primary); margin-bottom: 1.5rem;">Nueva Campaña</h2>
+
+<form method="post" enctype="multipart/form-data" id="campana-form">
+    {% csrf_token %}
+    
+    <!-- Datos de la Campaña -->
+    {% if form.errors %}
+        <div style="background: rgba(220, 38, 38, 0.1); border: 1px solid var(--error); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; color: var(--error);">
+            <strong>Errores en la campaña:</strong>
+            {{ form.errors }}
+        </div>
+    {% endif %}
+    {% if form.non_field_errors %}
+        <div style="background: rgba(220, 38, 38, 0.1); border: 1px solid var(--error); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; color: var(--error);">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+    <div style="background: white; border: 1px solid var(--border); padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem;">
+        <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--text-main);">Detalles Principales</h3>
+        
+        <div class="form-group">
+            <label>Nombre de la Campaña</label>
+            {{ form.nombre_campana }}
+        </div>
+        <div class="form-group">
+            <label>Fecha de Inicio</label>
+            {{ form.fecha_inicio }}
+        </div>
+        <div class="form-group">
+            <label>Fecha de Cierre</label>
+            {{ form.fecha_cierre }}
+        </div>
+        <div class="form-group" style="flex-direction: row; align-items: center; gap: 0.5rem;">
+            {{ form.esta_activa }}
+            <label style="margin: 0;">¿Comenzar activa?</label>
+        </div>
+    </div>
+
+    <!-- Planchas (Formset) -->
+    <div id="planchas-container">
+        <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--text-main);">Planchas (Candidatos)</h3>
+        
+        {{ planchas.management_form }}
+        
+        <div id="formset-wrapper">
+            {% for pform in planchas %}
+            <div class="plancha-form">
+                {% for hidden in pform.hidden_fields %}
+                    {{ hidden }}
+                {% endfor %}
+                {% if pform.errors %}
+                    <div style="color: var(--error); margin-bottom: 1rem; font-size: 0.875rem;">
+                        {{ pform.errors }}
+                    </div>
+                {% endif %}
+                {% if pform.non_field_errors %}
+                    <div style="color: var(--error); margin-bottom: 1rem;">{{ pform.non_field_errors }}</div>
+                {% endif %}
+                {% if planchas.can_delete %}
+                    {{ pform.DELETE }}
+                {% endif %}
+                
+                <div class="form-group">
+                    <label>Nombre de la Plancha</label>
+                    {{ pform.nombre }}
+                </div>
+                <div class="form-group">
+                    <label>Candidato Principal</label>
+                    {{ pform.candidato_principal }}
+                </div>
+                <div class="form-group">
+                    <label>Propuesta</label>
+                    {{ pform.propuesta }}
+                </div>
+                <div class="form-group">
+                    <label>Logo (Opcional)</label>
+                    {{ pform.logo }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Empty form for JS template -->
+        <div id="empty-form-template" style="display: none;">
+            <div class="plancha-form">
+                {% for hidden in planchas.empty_form.hidden_fields %}
+                    {{ hidden }}
+                {% endfor %}
+                <button type="button" class="remove-plancha" onclick="removePlancha(this)">Eliminar</button>
+                <div class="form-group">
+                    <label>Nombre de la Plancha</label>
+                    {{ planchas.empty_form.nombre }}
+                </div>
+                <div class="form-group">
+                    <label>Candidato Principal</label>
+                    {{ planchas.empty_form.candidato_principal }}
+                </div>
+                <div class="form-group">
+                    <label>Propuesta</label>
+                    {{ planchas.empty_form.propuesta }}
+                </div>
+                <div class="form-group">
+                    <label>Logo (Opcional)</label>
+                    {{ planchas.empty_form.logo }}
+                </div>
+            </div>
+        </div>
+
+        <button type="button" id="add-plancha-btn" class="btn-primary" style="background: rgba(0, 86, 179, 0.1); color: var(--primary); border: 1px dashed var(--primary); margin-bottom: 2rem; box-shadow: none;">
+            + Añadir otra plancha
+        </button>
+    </div>
+
+    <button type="submit" class="btn-primary" style="width: 100%; margin-bottom: 2rem;">Guardar Campaña y Planchas</button>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const addBtn = document.getElementById('add-plancha-btn');
+        const wrapper = document.getElementById('formset-wrapper');
+        const totalForms = document.getElementById('id_planchas-TOTAL_FORMS');
+        const emptyFormTemplate = document.getElementById('empty-form-template').innerHTML;
+
+        addBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const currentFormCount = parseInt(totalForms.value);
+            
+            // Reemplazar el prefijo '__prefix__' por el índice real
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, currentFormCount);
+            
+            // Crear el elemento e insertarlo
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = newFormHtml;
+            wrapper.appendChild(tempDiv.firstElementChild);
+            
+            // Actualizar el total de formularios
+            totalForms.value = currentFormCount + 1;
+        });
+    });
+
+    function removePlancha(btn) {
+        // En una implementación real con formsets ya guardados, aquí se debería marcar el checkbox de DELETE.
+        // Como este MVP es para crearlos de cero en caliente, podemos simplemente ocultar o quitar el bloque
+        // pero necesitamos mantener la secuencia del formset. Por simplicidad en la UI, lo removemos del DOM.
+        const planchaDiv = btn.closest('.plancha-form');
+        planchaDiv.style.display = 'none';
+        
+        // Si hay un checkbox de DELETE oculto, lo marcamos
+        const deleteInput = planchaDiv.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if(deleteInput) {
+            deleteInput.checked = true;
+        }
+    }
+</script>
+{% endblock %}
