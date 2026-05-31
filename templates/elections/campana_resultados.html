@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Resultados de Campaña - Voz Ciencia{% endblock %}
 
@@ -104,12 +105,12 @@
 <div id="report-content" style="background: #f8fafc; padding: 1rem;">
     <!-- Encabezado exclusivo para el PDF (Oculto en web) -->
     <div id="pdf-header" style="display: none; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 1rem;">
-        <img src="{% static 'img/website_UNC_logoUNC_transparente_04.png' %}" alt="Logo Universidad" style="height: 60px; object-fit: contain;">
+        <img src="{% static 'img/website_UNC_logoUNC_transparente_04.png' %}" alt="Logo Universidad" style="height: 100px; object-fit: contain;">
         <div style="text-align: center;">
-            <h2 style="font-size: 1.25rem; color: var(--primary); margin: 0;">Reporte Oficial de Votaciones</h2>
-            <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">{{ campana.nombre_campana }}</p>
+            <h2 style="font-size: 1.5rem; color: var(--primary); margin: 0;">Reporte Oficial de Votaciones</h2>
+            <p style="font-size: 1.1rem; color: var(--text-muted); margin: 0;">{{ campana.nombre_campana }}</p>
         </div>
-        <img src="{% static 'img/ministerio-de-ciencia-y-tecnologia-vnzla-logo-png_seeklogo-480311.png' %}" alt="Logo MinCYT" style="height: 60px; object-fit: contain;">
+        <img src="{% static 'img/ministerio-de-ciencia-y-tecnologia-vnzla-logo-png_seeklogo-480311.png' %}" alt="Logo MinCYT" style="height: 100px; object-fit: contain;">
     </div>
 
 <div class="stats-grid">
@@ -129,26 +130,14 @@
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-    <div class="chart-container" style="margin-bottom: 0;">
-        <h3 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 1.5rem; text-align: center;">
-            Votos por Candidato
-        </h3>
-        {% if total_votos > 0 %}
-            <canvas id="resultadosChart"></canvas>
-        {% else %}
-            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                Aún no hay votos registrados para esta campaña.
-            </div>
-        {% endif %}
-    </div>
-
-    <div class="chart-container" style="margin-bottom: 0;">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+    
+    <div class="chart-container" style="width: 100%; max-width: 500px; margin-bottom: 0;">
         <h3 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 1.5rem; text-align: center;">
             Participación Total
         </h3>
         {% if total_votos > 0 %}
-            <div style="position: relative; max-width: 250px; margin: 0 auto;">
+            <div style="position: relative; max-width: 200px; margin: 0 auto;">
                 <canvas id="participacionChart"></canvas>
                 <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
                     <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">{{ porcentaje_participacion }}%</span>
@@ -160,9 +149,25 @@
             </div>
         {% endif %}
     </div>
+
+    <div class="chart-container" style="width: 100%; max-width: 500px; margin-bottom: 0;">
+        <h3 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 1.5rem; text-align: center;">
+            Votos por Candidato
+        </h3>
+        {% if total_votos > 0 %}
+            <div style="position: relative; width: 100%; max-width: 400px; height: 180px; margin: 0 auto;">
+                <canvas id="resultadosChart"></canvas>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                Aún no hay votos registrados para esta campaña.
+            </div>
+        {% endif %}
+    </div>
+
 </div>
 
-<div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
+<div id="seccion-auditoria" class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
     <h3 style="font-size: 1.25rem; color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
@@ -249,6 +254,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             display: false
@@ -324,14 +330,16 @@
     function generatePDF() {
         const element = document.getElementById('report-content');
         const header = document.getElementById('pdf-header');
+        const auditoria = document.getElementById('seccion-auditoria');
         
-        // Preparar para PDF (mostrar encabezado, ajustar padding para márgenes)
+        // Preparar para PDF (mostrar encabezado, ocultar auditoría, ajustar padding)
         header.style.display = 'flex';
+        if(auditoria) auditoria.style.display = 'none';
         element.style.padding = '2rem';
         element.style.background = 'white';
         
         const opt = {
-            margin:       0,
+            margin:       [0.5, 0.5, 0.5, 0.5],
             filename:     'Reporte_Votacion_{{ campana.nombre_campana|slugify }}.pdf',
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true, logging: false },
@@ -342,6 +350,7 @@
         html2pdf().set(opt).from(element).save().then(() => {
             // Restaurar diseño original
             header.style.display = 'none';
+            if(auditoria) auditoria.style.display = 'block';
             element.style.padding = '1rem';
             element.style.background = '#f8fafc';
         });
