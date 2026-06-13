@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Resultados de Campaña - Voz Ciencia{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 4px 6px -1px rgba(0,86,179,0.05);
+        transition: var(--transition);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0,86,179,0.1);
+        border-color: var(--primary);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+        line-height: 1.2;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .chart-container {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 4px 6px -1px rgba(0,86,179,0.05);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'admin_dashboard' %}" style="color: var(--primary); text-decoration: none; font-weight: 500;">
+        &larr; Volver al Panel
+    </a>
+</div>
+
+<div class="mb-6">
+    <h2 style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;">
+        Resultados: {{ campana.nombre_campana }}
+    </h2>
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            {% if campana.esta_activa %}
+                <span style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600;">Activa</span>
+            {% else %}
+                <span style="background: rgba(239, 68, 68, 0.1); color: #EF4444; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600;">Cerrada</span>
+            {% endif %}
+            <span class="text-muted" style="font-size: 0.875rem;">
+                Cierra el: {{ campana.fecha_cierre|date:"d M Y, H:i" }}
+            </span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button onclick="generatePDF()" class="btn-primary" style="background: white; border: 1px solid var(--primary); color: var(--primary); width: auto; padding: 0.5rem 1rem; font-size: 0.875rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Generar PDF
+            </button>
+            <a href="{% url 'campana_qr' campana.id %}" class="btn-primary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.875rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <rect x="7" y="7" width="3" height="3"></rect>
+                    <rect x="14" y="7" width="3" height="3"></rect>
+                    <rect x="7" y="14" width="3" height="3"></rect>
+                    <rect x="14" y="14" width="3" height="3"></rect>
+                </svg>
+                Código QR
+            </a>
+        </div>
+    </div>
+</div>
+
+<div id="report-content" style="background: #f8fafc; padding: 1rem;">
+    <!-- Encabezado exclusivo para el PDF (Oculto en web) -->
+    <div id="pdf-header" style="display: none; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 1rem;">
+        <img src="{% static 'img/website_UNC_logoUNC_transparente_04.png' %}" alt="Logo Universidad" style="height: 100px; object-fit: contain;">
+        <div style="text-align: center;">
+            <h2 style="font-size: 1.5rem; color: var(--primary); margin: 0;">Reporte Oficial de Votaciones</h2>
+            <p style="font-size: 1.1rem; color: var(--text-muted); margin: 0;">{{ campana.nombre_campana }}</p>
+        </div>
+        <img src="{% static 'img/ministerio-de-ciencia-y-tecnologia-vnzla-logo-png_seeklogo-480311.png' %}" alt="Logo MinCYT" style="height: 100px; object-fit: contain;">
+    </div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_votos }}</div>
+        <div class="stat-label">Votos Totales</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-value">{{ total_visitas }}</div>
+        <div class="stat-label">Censo Electoral</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-value">{{ porcentaje_participacion }}%</div>
+        <div class="stat-label">Participación</div>
+    </div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+    
+    <div class="chart-container" style="width: 100%; max-width: 500px; margin-bottom: 0;">
+        <h3 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 1.5rem; text-align: center;">
+            Participación Total
+        </h3>
+        {% if total_votos > 0 %}
+            <div style="position: relative; max-width: 200px; margin: 0 auto;">
+                <canvas id="participacionChart"></canvas>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                    <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">{{ porcentaje_participacion }}%</span>
+                </div>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                Aún no hay votos registrados para esta campaña.
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="chart-container" style="width: 100%; max-width: 500px; margin-bottom: 0;">
+        <h3 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 1.5rem; text-align: center;">
+            Votos por Candidato
+        </h3>
+        {% if total_votos > 0 %}
+            <div style="position: relative; width: 100%; max-width: 400px; height: 180px; margin: 0 auto;">
+                <canvas id="resultadosChart"></canvas>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                Aún no hay votos registrados para esta campaña.
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<div id="seccion-auditoria" class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
+    <h3 style="font-size: 1.25rem; color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        Auditoría y Seguridad
+    </h3>
+    <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">Últimas transacciones registradas de forma segura y anónima.</p>
+    
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border); color: var(--text-muted);">
+                    <th style="padding: 0.75rem 1rem; font-weight: 600;">Comprobante (Hash)</th>
+                    <th style="padding: 0.75rem 1rem; font-weight: 600;">Fecha y Hora</th>
+                    <th style="padding: 0.75rem 1rem; font-weight: 600;">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for auditoria in auditorias %}
+                <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 1rem; font-family: monospace; color: var(--text-main);">
+                        <span style="background: rgba(0,0,0,0.05); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">{{ auditoria.comprobante|truncatechars:20 }}...</span>
+                    </td>
+                    <td style="padding: 1rem; color: var(--text-muted);">{{ auditoria.fecha_emision|date:"d M Y, H:i:s" }}</td>
+                    <td style="padding: 1rem;">
+                        <span style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600;">
+                            Voto Emitido
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="padding: 2rem; text-align: center; color: var(--text-muted);">No hay registros de auditoría disponibles.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</div> <!-- Cierre de report-content -->
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const labels = JSON.parse('{{ chart_labels|escapejs }}');
+        const data = JSON.parse('{{ chart_data|escapejs }}');
+        const totalVotos = {{ total_votos }};
+
+        if (totalVotos > 0) {
+            const ctx = document.getElementById('resultadosChart').getContext('2d');
+            
+            // Colores vibrantes para cada barra
+            const backgroundColors = [
+                'rgba(0, 86, 179, 0.7)',
+                'rgba(0, 150, 199, 0.7)',
+                'rgba(16, 185, 129, 0.7)',
+                'rgba(245, 158, 11, 0.7)',
+                'rgba(139, 92, 246, 0.7)'
+            ];
+            
+            const borderColors = [
+                'rgba(0, 86, 179, 1)',
+                'rgba(0, 150, 199, 1)',
+                'rgba(16, 185, 129, 1)',
+                'rgba(245, 158, 11, 1)',
+                'rgba(139, 92, 246, 1)'
+            ];
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Votos',
+                        data: data,
+                        backgroundColor: backgroundColors.slice(0, labels.length),
+                        borderColor: borderColors.slice(0, labels.length),
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Participación Doughnut Chart
+            const ctxPart = document.getElementById('participacionChart').getContext('2d');
+            const censoTotal = {{ total_visitas }};
+            const votosFaltantes = Math.max(0, censoTotal - totalVotos);
+            
+            new Chart(ctxPart, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Votos Emitidos', 'Restante'],
+                    datasets: [{
+                        data: [totalVotos, votosFaltantes],
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.8)', // Verde para emitidos
+                            'rgba(0, 0, 0, 0.05)'      // Gris claro para faltantes
+                        ],
+                        borderColor: [
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(0, 0, 0, 0.1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '75%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.raw;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    function generatePDF() {
+        const element = document.getElementById('report-content');
+        const header = document.getElementById('pdf-header');
+        const auditoria = document.getElementById('seccion-auditoria');
+        
+        // Preparar para PDF (mostrar encabezado, ocultar auditoría, ajustar padding)
+        header.style.display = 'flex';
+        if(auditoria) auditoria.style.display = 'none';
+        element.style.padding = '2rem';
+        element.style.background = 'white';
+        
+        const opt = {
+            margin:       [0.5, 0.5, 0.5, 0.5],
+            filename:     'Reporte_Votacion_{{ campana.nombre_campana|slugify }}.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Generar PDF
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Restaurar diseño original
+            header.style.display = 'none';
+            if(auditoria) auditoria.style.display = 'block';
+            element.style.padding = '1rem';
+            element.style.background = '#f8fafc';
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Registro de Actividad - Voz Ciencia{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'admin_dashboard' %}" style="color: var(--primary); text-decoration: none; font-weight: 500;">
+        &larr; Volver al Panel
+    </a>
+</div>
+
+<div class="mb-6" style="display: flex; align-items: center; justify-content: space-between;">
+    <h2 style="font-size: 1.5rem; color: var(--primary);">
+        Registro de Actividad (System Logs)
+    </h2>
+    <div>
+        <span style="display: inline-block; font-size: 0.875rem; color: var(--text-muted);">
+            Últimos movimientos registrados en la plataforma
+        </span>
+    </div>
+</div>
+
+<div class="glass-panel" style="padding: 1.5rem;">
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border); color: var(--text-muted);">
+                    <th style="padding: 1rem; font-weight: 600;">Fecha y Hora</th>
+                    <th style="padding: 1rem; font-weight: 600;">Acción</th>
+                    <th style="padding: 1rem; font-weight: 600;">Descripción</th>
+                    <th style="padding: 1rem; font-weight: 600;">Dirección IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 1rem; color: var(--text-muted); white-space: nowrap;">{{ log.fecha|date:"d M Y, H:i:s" }}</td>
+                    <td style="padding: 1rem; white-space: nowrap;">
+                        {% if log.accion == 'LOGIN' %}
+                            <span style="background: rgba(0, 150, 199, 0.1); color: #0096c7; padding: 0.25rem 0.5rem; border-radius: 1rem; font-weight: 600;">Inicio de Sesión</span>
+                        {% elif log.accion == 'LOGOUT' %}
+                            <span style="background: rgba(107, 114, 128, 0.1); color: #6b7280; padding: 0.25rem 0.5rem; border-radius: 1rem; font-weight: 600;">Cierre de Sesión</span>
+                        {% elif log.accion == 'CAMPANA_CREADA' %}
+                            <span style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; padding: 0.25rem 0.5rem; border-radius: 1rem; font-weight: 600;">Campaña Creada</span>
+                        {% elif log.accion == 'CAMPANA_EDITADA' %}
+                            <span style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6; padding: 0.25rem 0.5rem; border-radius: 1rem; font-weight: 600;">Campaña Editada</span>
+                        {% elif log.accion == 'VOTO_EMITIDO' %}
+                            <span style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 0.25rem 0.5rem; border-radius: 1rem; font-weight: 600;">Voto Emitido</span>
+                        {% else %}
+                            <span style="background: rgba(0, 0, 0, 0.1); color: #374151; padding: 0.25rem 0.5rem; border-radius: 1rem; font-weight: 600;">{{ log.accion }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 1rem; color: var(--text-main);">{{ log.descripcion }}</td>
+                    <td style="padding: 1rem; font-family: monospace; color: var(--text-muted);">{{ log.ip_address|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" style="padding: 3rem; text-align: center; color: var(--text-muted);">No hay registros de actividad aún.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginación Simple -->
+    {% if is_paginated %}
+    <div style="display: flex; justify-content: center; margin-top: 2rem; gap: 0.5rem;">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}" class="btn-primary" style="background: white; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem;">Anterior</a>
+        {% endif %}
+        <span style="padding: 0.5rem 1rem; color: var(--text-muted);">
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </span>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="btn-primary" style="background: white; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem;">Siguiente</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
