@@ -93,8 +93,11 @@
                 {% if pform.non_field_errors %}
                     <div style="color: var(--error); margin-bottom: 1rem;">{{ pform.non_field_errors }}</div>
                 {% endif %}
+                <button type="button" class="remove-plancha" onclick="removePlancha(this)">Eliminar</button>
                 {% if planchas.can_delete %}
-                    {{ pform.DELETE }}
+                    <div style="display: none;">
+                        {{ pform.DELETE }}
+                    </div>
                 {% endif %}
                 
                 <div class="form-group">
