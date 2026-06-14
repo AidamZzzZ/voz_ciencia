@@ -179,6 +179,36 @@
             // Actualizar el total de formularios
             totalForms.value = currentFormCount + 1;
         });
+
+        // Bloquear fechas pasadas para Inicio y Cierre
+        const fechaInicio = document.getElementById('id_fecha_inicio');
+        const fechaCierre = document.getElementById('id_fecha_cierre');
+
+        if (fechaInicio && fechaCierre) {
+            // Formatear la fecha actual local a YYYY-MM-DDTHH:MM
+            const now = new Date();
+            const tzOffset = now.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(now - tzOffset)).toISOString().slice(0, 16);
+
+            // Solo aplicar el 'min' de hoy si el campo está vacío, 
+            // para permitir editar campañas viejas sin problemas con validación HTML5
+            if (!fechaInicio.value) {
+                fechaInicio.setAttribute('min', localISOTime);
+            }
+            if (!fechaCierre.value) {
+                fechaCierre.setAttribute('min', localISOTime);
+            }
+
+            // Evitar que la fecha de cierre sea menor a la de inicio
+            fechaInicio.addEventListener('change', function() {
+                if (this.value) {
+                    fechaCierre.setAttribute('min', this.value);
+                    if (fechaCierre.value && fechaCierre.value < this.value) {
+                        fechaCierre.value = this.value;
+                    }
+                }
+            });
+        }
     });
 
     function removePlancha(btn) {
