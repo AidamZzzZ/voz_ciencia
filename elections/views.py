@@ -184,25 +184,30 @@ class EmitirVotoView(View):
         if not plancha_id:
             return redirect('campana_votar', pk=pk)
             
+        from django.db.models import F
+
         with transaction.atomic():
             campana = Campana.objects.get(id=pk)
             if not campana.esta_activa:
                 return redirect('campana_votar', pk=pk)
                 
+            # select_for_update bloquea la fila del votante para que dos peticiones simultáneas del mismo usuario no pasen el 'if not votante.ya_voto'
             votante, created = Votante.objects.select_for_update().get_or_create(
                 token_sesion=session_key, 
                 campana=campana
             )
             
             if not votante.ya_voto:
-                try:
-                    plancha = Plancha.objects.select_for_update().get(id=plancha_id, campana=campana)
-                    plancha.votos_recibidos += 1
-                    plancha.save()
-                    
+                # Usar update() y F() incrementa directamente en la base de datos de forma atómica y evita bloqueos innecesarios en la Plancha
+                filas_actualizadas = Plancha.objects.filter(id=plancha_id, campana=campana).update(
+                    votos_recibidos=F('votos_recibidos') + 1
+                )
+                
+                if filas_actualizadas > 0:
                     votante.ya_voto = True
                     votante.fecha_voto = timezone.now()
-                    votante.save()
+                    # save(update_fields) asegura que no sobrescribamos otros campos si se están actualizando en paralelo
+                    votante.save(update_fields=['ya_voto', 'fecha_voto'])
                     
                     comprobante_hash = str(uuid.uuid4())
                     AuditoriaVoto.objects.create(
@@ -217,8 +222,6 @@ class EmitirVotoView(View):
                         descripcion=f'Voto anónimo emitido en campaña "{campana.nombre_campana}". Hash: {comprobante_hash[:8]}...',
                         ip_address=ip_address
                     )
-                except Plancha.DoesNotExist:
-                    pass
                     
         return redirect('campana_votar', pk=pk)
 
